@@ -1,0 +1,10 @@
+%pip install PyPDF2
+%pip install sentence-transformers
+%pip install pymilvus 
+%pip install nltk
+%pip install tf_keras
+%pip install groq
+%pip install langchain_community
+%pip install -U langchain-milvus
+%pip install "pymongo[srv]==3.11"
+%pip install bcrypt
