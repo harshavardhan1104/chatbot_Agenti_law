@@ -13,9 +13,9 @@ client = MongoClient(MONGO_URI)
 
 DB_NAME = "CapstoneDB"
 if DB_NAME not in client.list_database_names():
-    print(f"📂 Creating new database: {DB_NAME}")
+    print(f"Creating new database: {DB_NAME}")
 else:
-    print(f"📂 Using existing database: {DB_NAME}")
+    print(f"Using existing database: {DB_NAME}")
 
 agents_db = client[DB_NAME]
 
@@ -24,9 +24,8 @@ users_col = agents_db["users"]
 chats_col = agents_db["chats"]
 messages_col = agents_db["messages"]
 
-# -------------------------
+
 # Password helpers
-# -------------------------
 def hash_password(password: str) -> bytes:
     if isinstance(password, str):
         password = password.encode("utf-8")
@@ -37,9 +36,7 @@ def verify_password(password: str, hashed: bytes) -> bool:
         password = password.encode("utf-8")
     return bcrypt.checkpw(password, hashed)
 
-# -------------------------
 # User Management
-# -------------------------
 def signup_user(username, password, email):
     if users_col.find_one({"username": username}):
         return " Username already exists"
@@ -61,9 +58,7 @@ def login_user(username, password):
         return user
     return None
 
-# -------------------------
 # Chat Management
-# -------------------------
 def create_new_chat(user_id, db=agents_db):
     chat = {
         "user_id": ObjectId(user_id),
@@ -103,31 +98,29 @@ def get_chat_summary(chat_id, db=agents_db):
     convo_text = "\n".join([f"{r}: {c}" for r, c in history])
     return summarizer_llm(convo_text)
 
-# -------------------------
+
 # Ask Questions (Agents + Save to DB)
-# -------------------------
-def ask_question(user, chat_id, query, db=agents_db):
+def ask_question(user, chat_id, query, db):
     # Store user message
     save_message(chat_id, "user", query, db)
 
-    # If it's the first query → set chat title using LLM
+    # Set chat title if first query
     chat = db["chats"].find_one({"_id": ObjectId(chat_id)})
     msg_count = db["messages"].count_documents({"chat_id": ObjectId(chat_id)})
-    if msg_count == 1 and chat["title"] == "Untitled Chat":
-        ai_title = generate_chat_title(query)  # 💬 gpt-oss-120b
+    if msg_count == 1 and chat.get("title", "Untitled Chat") == "Untitled Chat":
+        ai_title = generate_chat_title(query)
         update_chat_title(chat_id, ai_title, first_query=query, db=db)
 
-    # Call Agents pipeline
-    answer, chunks, tool_used = route_and_answer(user["_id"], query)
+    # Get 4 outputs from agent pipeline
+    answer, retrieved_contexts, tool_used, metrics = route_and_answer(user["_id"], query)
 
-    # Store assistant response
+    # Store assistant message
     save_message(chat_id, "assistant", answer, db)
 
-    return answer
+    # Return only answer + metrics
+    return answer, metrics,tool_used
 
-# -------------------------
 # Delete Chat + Messages
-# -------------------------
 def delete_chat(chat_id: str, db=agents_db) -> str:
     try:
         obj_id = ObjectId(chat_id)
