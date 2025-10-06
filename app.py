@@ -6,6 +6,13 @@ from functools import lru_cache
 import time
 from mongo_agents import ask_question
 
+import nltk
+nltk.download('punkt', quiet=True)
+try:
+    nltk.download('punkt_tab', quiet=True)
+except:
+    pass
+
 # Import agent functions
 from agents import route_and_answer, load_tools
 from mongo_agents import (
@@ -31,7 +38,7 @@ def init_session_state():
         st.session_state.current_chat_id = None
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
-    if "tools_loaded" not in st.session_state:
+    if "tools_loaded" not in st.session_state: 
         st.session_state.tools_loaded = False
     if "user" not in st.session_state:
         st.session_state.user = None
@@ -204,11 +211,6 @@ def show_chat_page():
                     
                     with st.spinner("Loading chat history..."):
                         st.session_state.chat_history = get_chat_history(chat_id, agents_db)
-                        
-                        # fetch summary from mongo_convo if exists
-                        summary = get_chat_summary(chat_id, agents_db)
-                        if summary:
-                            st.session_state.chat_history.insert(0, ("system", f"Summary: {summary}"))
                     
                     st.rerun()
             
@@ -217,7 +219,7 @@ def show_chat_page():
 
     # Chat window
     st.title("Legal Case Assistant")
-    st.info("💡 Ask me questions about your legal documents or type 'list cases' to see available cases.")
+    st.info("💡 Ask me questions about your legal documents that are mentioned on left side of the page.")
 
     # Display chat history
     chat_container = st.container()
@@ -230,7 +232,7 @@ def show_chat_page():
             elif role == "system":
                 st.markdown(f'<div class="chat-message-summary">{content}</div>', unsafe_allow_html=True)
 
-    # Chat input
+    # --- Chat input ---
     if prompt := st.chat_input("Ask a question..."):
         if not st.session_state.current_chat_id:
             with st.spinner("Starting new chat..."):
@@ -244,15 +246,27 @@ def show_chat_page():
         # Process via mongo_agents.ask_question (saves to DB too)
         with st.spinner("🤔 Thinking..."):
             try:
-                response_text = ask_question(
+                # FIX: Unpack all three returned values
+                response_text, metrics, tool_used = ask_question(
                     st.session_state.user, 
                     st.session_state.current_chat_id, 
                     prompt, 
                     agents_db
                 )
 
+                # Show assistant response
                 st.markdown(f'<div class="chat-message-bot">{response_text}</div>', unsafe_allow_html=True)
                 st.session_state.chat_history.append(("assistant", response_text))
+
+                # Show which tool was used
+                #st.markdown(f"**Tool Used:** {tool_used}")
+
+                # Show metrics as a separate block
+                st.markdown("### 📊 Evaluation Metrics")
+                st.write(f"**Faithfulness:** {metrics['faithfulness']:.2f}")
+                st.write(f"**Answer Relevancy:** {metrics['answer_relevance']:.2f}")
+                st.write(f"**Tool Call Accuracy:** {metrics['tool_call_accuracy']}")
+
                 st.cache_data.clear()  # Refresh sidebar chats
             except Exception as e:
                 st.error(f"⚠️ Error processing your request: {e}")
@@ -285,6 +299,7 @@ def main():
         show_login_page()
     else:
         show_chat_page()
+
 
 if __name__ == "__main__":
     main()
