@@ -1,10 +1,34 @@
-%pip install PyPDF2
-%pip install sentence-transformers
-%pip install pymilvus 
-%pip install nltk
-%pip install tf_keras
-%pip install groq
-%pip install langchain_community
-%pip install -U langchain-milvus
-%pip install "pymongo[srv]==3.11"
-%pip install bcrypt
+# --- Core ---
+streamlit
+python-dotenv
+tqdm
+numpy
+pandas
+
+# --- NLP & Embeddings ---
+nltk
+sentence-transformers
+rank-bm25
+PyPDF2
+transformers
+huggingface-hub
+datasets
+evaluate
+scikit-learn
+regex
+
+# --- Databases ---
+pymongo
+pymilvus
+
+# --- LangChain & Groq ---
+langchain
+langchain-core
+langchain-community
+langchain-groq
+
+# --- RAGAS (Evaluation Metrics) ---
+ragas
+
+# --- Security ---
+bcrypt
